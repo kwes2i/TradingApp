@@ -1,0 +1,74 @@
+{
+  "id": "demo_001",
+  "symbol": "DEMO",
+  "timeframe": "1d",
+  "asset_class": "demo",
+  "setup_candles": 90,
+  "hidden_candles": 30,
+  "question": "Where does price close 30 candles from now, relative to the last close?",
+  "answer_type": "direction_plus_confidence",
+  "ground_truth": {
+    "direction": "down",
+    "change_pct": -4.44
+  },
+  "facts": {
+    "change_pct": -4.44,
+    "direction": "down",
+    "max_gain_pct": 11.17,
+    "max_loss_pct": -12.64,
+    "max_drawdown_pct": -21.42,
+    "setup_high": 103.98,
+    "setup_low": 58.83,
+    "broke_setup_high": false,
+    "candles_to_break_high": null,
+    "broke_setup_low": false,
+    "rsi_at_decision": 56.7,
+    "close_vs_ma20_pct": 4.34,
+    "vol_vs_20d_avg": 1.05,
+    "setup_range_pct": 76.75
+  },
+  "annotations": {
+    "swing_highs": 4,
+    "swing_lows": 6,
+    "resting_above": [
+      101.6187,
+      76.2535,
+      73.4206
+    ],
+    "resting_below": [
+      58.8288,
+      59.1891,
+      63.2846
+    ],
+    "liquidity_taken": [
+      {
+        "side": "above",
+        "level": 73.4206,
+        "candles_later": 2
+      },
+      {
+        "side": "above",
+        "level": 76.2535,
+        "candles_later": 4
+      },
+      {
+        "side": "below",
+        "level": 63.2846,
+        "candles_later": 12
+      }
+    ],
+    "trend_at_decision": "up"
+  },
+  "source": {
+    "provider": "demo",
+    "setup_from": "2019-01-01 00:00:00+00:00",
+    "decision_at": "2019-03-31 00:00:00+00:00",
+    "reveal_to": "2019-04-30 00:00:00+00:00"
+  },
+  "breakdown_brief": "Price closed 4.44% lower after 30 candles. It never took out the setup high. Worst drawdown along the way was 21.42%.",
+  "breakdown_detailed": null,
+  "images": {
+    "setup": "demo_001_setup.png",
+    "reveal": "demo_001_reveal.png"
+  }
+}
