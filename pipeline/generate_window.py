@@ -22,6 +22,7 @@ import matplotlib
 matplotlib.use("Agg")
 import mplfinance as mpf
 import chart_render as cr
+import breakdown as bd
 
 SETUP_CANDLES = 90    # what the user sees
 HIDDEN_CANDLES = 30   # what they're predicting
@@ -92,6 +93,16 @@ def demo_klines(n, seed=7):
 
 
 # ---------------------------------------------------------------- indicators
+
+def atr_pct(df, period=14):
+    """Average true range as a percentage of the last close. The natural unit
+    of 'how far is far' for this particular chart."""
+    h, l, c = df["High"], df["Low"], df["Close"]
+    pc = c.shift(1)
+    tr = pd.concat([h - l, (h - pc).abs(), (l - pc).abs()], axis=1).max(axis=1)
+    a = tr.ewm(alpha=1 / period, adjust=False).mean().iloc[-1]
+    return float(a / c.iloc[-1] * 100)
+
 
 def rsi(series, period=14):
     d = series.diff()
@@ -177,21 +188,25 @@ ASSET_CLASS = {"binance": "crypto", "twelvedata": "forex_metals", "demo": "demo"
 def build(df, wid, symbol="DEMO", interval="1d", provider="demo"):
     setup, future = df.iloc[:SETUP_CANDLES], df.iloc[SETUP_CANDLES:]
     f = facts(setup, future)
+    atr = atr_pct(setup)
+    # a stop tighter than half an ATR is noise; a target beyond 12 ATR is fantasy
+    limits = {
+        "atr_pct": round(atr, 3),
+        "stop_min": round(max(0.25, atr * 0.4), 2),
+        "stop_max": round(atr * 4, 1),
+        "target_min": round(max(0.25, atr * 0.4), 2),
+        "target_max": round(atr * 8, 1),
+    }
 
     os.makedirs(OUT, exist_ok=True)
-    cr.render_setup(normalise(df), SETUP_CANDLES, f"{OUT}/{wid}_setup.png",
-                    f"{interval} candles \u2014 what happens over the next {HIDDEN_CANDLES}?")
-    cr.render_reveal(normalise(df), SETUP_CANDLES, f"{OUT}/{wid}_reveal.png",
+    geom = cr.render_setup(normalise(df), SETUP_CANDLES, f"{OUT}/{wid}_setup.png",
+                           headroom_pct=limits["target_max"])
+    cr.render_reveal(df, SETUP_CANDLES, f"{OUT}/{wid}_reveal.png",
                      f"{symbol} {interval} \u2014 revealed")
     anno = cr.annotations(df, SETUP_CANDLES)
 
-    brief = (
-        f"Price closed {abs(f['change_pct'])}% "
-        f"{'higher' if f['direction'] == 'up' else 'lower'} after 30 candles. "
-        + (f"It broke the setup high on candle {f['candles_to_break_high']}. "
-           if f["broke_setup_high"] else "It never took out the setup high. ")
-        + f"Worst drawdown along the way was {abs(f['max_drawdown_pct'])}%."
-    )
+    brief = bd.brief(f, anno)
+    detailed = bd.paragraph(f, anno, interval)
 
     return {
         "id": wid,
@@ -204,6 +219,12 @@ def build(df, wid, symbol="DEMO", interval="1d", provider="demo"):
                     "relative to the last close?",
         "answer_type": "direction_plus_confidence",
         "ground_truth": {"direction": f["direction"], "change_pct": f["change_pct"]},
+        "entry_price": round(float(df["Close"].iloc[SETUP_CANDLES - 1]), 4),
+        "entry_norm": round(float(normalise(df)["Close"].iloc[SETUP_CANDLES - 1]), 6),
+        "setup_geometry": geom,
+        "limits": limits,
+        "hidden_ohlc": [[round(float(v), 4) for v in row] for row in
+                        df.iloc[SETUP_CANDLES:][["Open", "High", "Low", "Close"]].values],
         "facts": f,
         "annotations": anno,
         "source": {
@@ -213,7 +234,7 @@ def build(df, wid, symbol="DEMO", interval="1d", provider="demo"):
             "reveal_to": str(df.index[-1]),
         },
         "breakdown_brief": brief,
-        "breakdown_detailed": None,   # written once per window, then cached
+        "breakdown_detailed": detailed,
         "images": {"setup": f"{wid}_setup.png", "reveal": f"{wid}_reveal.png"},
     }
 
